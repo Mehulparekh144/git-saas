@@ -1,0 +1,193 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+    provider        = "prisma-client-js"
+    previewFeatures = ["postgresqlExtensions"]
+}
+
+datasource db {
+    provider   = "postgresql"
+    url        = env("DATABASE_URL")
+    extensions = [vector]
+}
+
+model User {
+    id             String          @id
+    name           String
+    email          String
+    emailVerified  Boolean
+    image          String?
+    createdAt      DateTime
+    updatedAt      DateTime
+    sessions       Session[]
+    accounts       Account[]
+    credits        Int             @default(100)
+    userToProject  UserToProject[]
+    askedQuestions Question[]
+
+    @@unique([email])
+    @@map("user")
+}
+
+model Session {
+    id        String   @id
+    expiresAt DateTime
+    token     String
+    createdAt DateTime
+    updatedAt DateTime
+    ipAddress String?
+    userAgent String?
+    userId    String
+    user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+    @@unique([token])
+    @@map("session")
+}
+
+model Account {
+    id                    String    @id
+    accountId             String
+    providerId            String
+    userId                String
+    user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+    accessToken           String?
+    refreshToken          String?
+    idToken               String?
+    accessTokenExpiresAt  DateTime?
+    refreshTokenExpiresAt DateTime?
+    scope                 String?
+    password              String?
+    createdAt             DateTime
+    updatedAt             DateTime
+
+    @@map("account")
+}
+
+model Verification {
+    id         String    @id
+    identifier String
+    value      String
+    expiresAt  DateTime
+    createdAt  DateTime?
+    updatedAt  DateTime?
+
+    @@map("verification")
+}
+
+model Project {
+    id        String    @id @default(uuid())
+    name      String
+    repoUrl   String
+    deletedAt DateTime?
+
+    createdAt           DateTime              @default(now())
+    updatedAt           DateTime              @updatedAt
+    userToProject       UserToProject[]
+    Commit              Commit[]
+    SourceCodeEmbedding SourceCodeEmbedding[]
+    savedQuestions      Question[]
+    meetings            Meeting[]
+
+    @@map("project")
+}
+
+model UserToProject {
+    id        String  @id @default(uuid())
+    userId    String
+    projectId String
+    user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@unique([userId, projectId])
+    @@map("user_to_project")
+}
+
+model Commit {
+    id                 String   @id @default(uuid())
+    projectId          String
+    project            Project  @relation(fields: [projectId], references: [id])
+    commitMessage      String
+    commitHash         String
+    commitAuthor       String
+    commitAuthorAvatar String
+    commitDate         DateTime
+    summary            String
+    createdAt          DateTime @default(now())
+    updatedAt          DateTime @updatedAt
+
+    @@map("commit")
+}
+
+model SourceCodeEmbedding {
+    id String @id @default(uuid())
+
+    summaryEmbedding Unsupported("vector(768)")? // 768 is the dimension of the embedding. Gemini uses 768.
+    sourceCode       String
+    fileName         String
+    summary          String
+
+    projectId String
+    project   Project @relation(fields: [projectId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("source_code_embedding")
+}
+
+model Question {
+    id       String @id @default(uuid())
+    question String
+    answer   String
+
+    fileReferences Json?
+    projectId      String
+    project        Project @relation(fields: [projectId], references: [id])
+
+    userId String
+    user   User   @relation(fields: [userId], references: [id])
+
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    @@map("question")
+}
+
+model Meeting {
+    id         String  @id @default(uuid())
+    meetingUrl String //firebase storage url
+    name       String
+    projectId  String
+    project    Project @relation(fields: [projectId], references: [id])
+
+    status    MeetingStatus @default(PROCESSING)
+    createdAt DateTime      @default(now())
+    updatedAt DateTime      @updatedAt
+    issues    Issue[]
+
+    @@map("meeting")
+}
+
+enum MeetingStatus {
+    PROCESSING
+    COMPLETED
+}
+
+model Issue {
+    id        String   @id @default(uuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt
+
+    start    String
+    end      String
+    gist     String
+    headline String
+    summary  String
+
+    meetingId String
+    meeting   Meeting @relation(fields: [meetingId], references: [id])
+}

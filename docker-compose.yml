@@ -1,0 +1,14 @@
+version: '3.8'
+
+services:
+  travelplanner:
+    image: 940482450223.dkr.ecr.us-east-2.amazonaws.com/pratheesh/travelplanner:latest
+    ports:
+      - "3001:7680"
+    environment:
+      - OPENAI_API_KEY=yabadabadoo
+      - SERPER_API_KEY=yabadabadoo
+      - WEATHER_API_KEY=yabadabadoo
+      - AMADEUS_API_KEY=yabadabadoo
+      - AMADEUS_API_SECRET=yabadabadoo
+    restart: unless-stopped
